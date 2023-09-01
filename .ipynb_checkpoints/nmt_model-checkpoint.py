@@ -82,7 +82,17 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.Dropout
         ###     Conv1D Layer:
         ###         https://pytorch.org/docs/stable/generated/torch.nn.Conv1d.html
-
+        self.vocab_tgt = self.vocab.tgt.__len__()
+        self.vocab_src = self.vocab.src.__len__()
+        self.post_embed_cnn = nn.Conv1d(embed_size, embed_size, 2,padding = 0)
+        self.encoder = nn.LSTM(len(self.vocab.src), hidden_size, bidirectional = True, bias = True)
+        self.decoder = nn.LSTMCell(len(self.vocab.tgt), hidden_size, bias = True)
+        self.h_projection = nn.Linear(hidden_size, 2*hidden_size,bias = False)
+        self.c_projection = nn.Linear(hidden_size, 2*hidden_size, bias = False)
+        self.att_projection = nn.Linear(hidden_size, 2*hidden_size, bias = False)
+        self.combined_output_projection = nn.Linear(hidden_size, 3*hidden_size, bias = False)
+        self.target_vocab_projection = nn.Linear(self.vocab_tgt, hidden_size, bias = False)
+        self.dropout = nn.Dropout(self.dropout_rate)
         ### END YOUR CODE
 
     def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
@@ -178,8 +188,21 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/generated/torch.permute.html
         ###     Tensor Reshape (a possible alternative to permute):
         ###         https://pytorch.org/docs/stable/generated/torch.Tensor.reshape.html
-
-
+        src_len, b = source_padded.size()
+        embedding = ModelEmbeddings(self.embed_size, self.vocab)
+        X = embedding.source(source_padded)
+        X = X.permute(1,2,0)
+        X = self.post_embed_cnn(X)
+        X = x.permute(2,0,1) # (src_len, b, e)
+        X = packed_padded_sequence(X, source_lengths) #create packsequence object
+        enc_hiddens, (h_n, c_n) = self.encoder(X)
+        enc_hiddens = pad_packed_sequence(enc_hiddens)
+        enc_hiddens = enc_hiddens.permute(1,0,2)
+        h_n = h_n.view(b,-1)
+        c_n = c_n.view(b,-1)
+        h_n = self.h_projection(h_n)
+        c_n = c_n.c_projection(c_n)
+        dec_init_state = (h_n,c_n)
         ### END YOUR CODE
 
         return enc_hiddens, dec_init_state
