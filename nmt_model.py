@@ -89,7 +89,7 @@ class NMT(nn.Module):
         self.decoder = nn.LSTMCell(self.vocab_tgt, hidden_size, bias = True)
         self.h_projection = nn.Linear(hidden_size*2, hidden_size,bias = False)
         self.c_projection = nn.Linear(hidden_size*2, hidden_size, bias = False)
-        self.att_projection = nn.Linear(hidden_size, 2*hidden_size, bias = False)
+        self.att_projection = nn.Linear(hidden_size*2, hidden_size, bias = False)
         self.combined_output_projection = nn.Linear(hidden_size, 3*hidden_size, bias = False)
         self.target_vocab_projection = nn.Linear(self.vocab_tgt, hidden_size, bias = False)
         self.dropout = nn.Dropout(self.dropout_rate)
@@ -270,9 +270,14 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/torch.html#torch.cat
         ###     Tensor Stacking:
         ###         https://pytorch.org/docs/stable/torch.html#torch.stack
-
-
-
+        enc_hiddens_proj = self.att_projection(enc_hiddens) #(b,src_len, h)
+        Y = self.model_embeddings.tgt(target_padded) #(tgt_len, b, e)
+        for t in Y:
+            Ybar_t = torch.cat((t,o_prev),dim = 1)
+            dec_state, combined_output, e_t = step(Ybar_t, dec_state, enc_hiddens, enc_hiddens_proj, enc_masks)
+            combined_outputs.append(combined_output)
+            o_prev = combined_output
+        combined_outputs = torch.stack(combined_outputs)
         ### END YOUR CODE
 
         return combined_outputs
