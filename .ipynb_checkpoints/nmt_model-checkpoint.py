@@ -54,7 +54,7 @@ class NMT(nn.Module):
         self.combined_output_projection = None
         self.target_vocab_projection = None
         self.dropout = None
-        self.softmax = nn.Softmax(dim =1)
+        self.softmax = nn.Softmax(dim =-1)
         # For sanity check only, not relevant to implementation
         self.gen_sanity_check = False
         self.counter = 0
@@ -92,7 +92,7 @@ class NMT(nn.Module):
         self.c_projection = nn.Linear(hidden_size*2, hidden_size, bias = False)
         self.att_projection = nn.Linear(hidden_size*2, hidden_size, bias = False)
         self.combined_output_projection = nn.Linear(hidden_size*3, hidden_size, bias = False)
-        self.target_vocab_projection = nn.Linear(self.vocab_tgt, hidden_size, bias = False)
+        self.target_vocab_projection = nn.Linear(hidden_size, self.vocab_tgt, bias = False)
         self.dropout = nn.Dropout(self.dropout_rate)
         ### END YOUR CODE
 
